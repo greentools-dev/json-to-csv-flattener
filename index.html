@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nested JSON to Flat CSV Converter — Free &amp; 100% Client-Side</title>
+    <meta
+      name="description"
+      content="Convert complex nested JSON objects and API payloads into flat, spreadsheet-ready RFC 4180 CSV tables. 100% private in-browser tool."
+    />
+    <meta name="keywords" content="json to csv, flatten json to csv, convert nested json, stripe webhook to csv, shopify json to csv, client side json converter" />
+    <meta name="author" content="GreenTools" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!-- OpenGraph Meta Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Nested JSON to Flat CSV Converter — 100% Client-Side" />
+    <meta
+      property="og:description"
+      content="Flatten nested API payloads and webhook JSON into clean CSV spreadsheets directly in your browser."
+    />
+    <meta property="og:site_name" content="GreenTools" />
+
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tailwind CSS CDN & Lucide Icons CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Structured JSON-LD Schema: WebApplication & FAQPage -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "name": "Nested JSON to Flat CSV Converter",
+            "operatingSystem": "All",
+            "applicationCategory": "DeveloperApplication",
+            "browserRequirements": "Requires JavaScript and modern HTML5 FileReader API support.",
+            "description": "Recursively flattens deeply nested JSON objects, webhooks, and API payloads into clean RFC 4180 CSV spreadsheets.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": [
+              "Recursive dot-notation object tree traversal (e.g. user.address.city)",
+              "Automatic primary array discovery for Stripe, Shopify, and REST APIs",
+              "Interactive column manager to show/hide unwanted columns",
+              "Instant full-text row search and table filter",
+              "Strict RFC 4180 CSV compliance with quote shielding",
+              "1-click Download CSV & Copy to Clipboard",
+              "100% Client-side local parsing (handles large payloads without cloud timeout)"
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Why use this tool instead of an AI assistant to convert JSON to CSV?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "AI models hallucinate fields, reorder numerical rows, truncate large JSON responses, and fail on files larger than 100 KB. This browser-based flattener uses deterministic recursive JavaScript traversal to guarantee 100% mathematical fidelity on multi-megabyte payloads."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How are deeply nested objects converted into column headers?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Nested object keys are joined using dot notation. For example, a JSON structure of { 'customer': { 'billing': { 'country': 'US' } } } becomes the column header 'customer.billing.country'."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What happens if an object contains an array of items?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Arrays of simple primitives are cleanly serialized and joined with semicolons, while nested object arrays are converted to compact, escaped JSON strings to keep table rows aligned."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is my proprietary customer or database JSON uploaded anywhere?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. All parsing runs exclusively in your browser tab's JavaScript memory. No data is ever transmitted across the internet."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+
+    <style>
+      :root {
+        --grid-line: rgba(15, 23, 42, 0.04);
+      }
+      .bg-subtle-grid {
+        background-size: 24px 24px;
+        background-image:
+          linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+          linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      }
+      .custom-scroll::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .custom-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.3);
+        border-radius: 4px;
+      }
+      .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.5);
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-500 selection:text-white bg-subtle-grid flex flex-col justify-between">
+    <!-- Header -->
+    <header class="border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-30">
+      <div class="max-w-[1360px] mx-auto flex items-center justify-between gap-6 px-4 sm:px-6 py-3.5">
+        <a href="#app" class="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+          <div class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+            <i data-lucide="braces" class="w-4 h-4"></i>
+          </div>
+          <span>GreenTools <span class="text-xs font-normal text-slate-400">/ JSON to CSV Flattener</span></span>
+        </a>
+
+        <nav aria-label="Quick links" class="hidden sm:flex items-center gap-6 text-xs sm:text-sm font-medium text-slate-600">
+          <a href="#how-to-use" class="hover:text-slate-900 transition-colors">How It Works</a>
+          <a href="#privacy" class="hover:text-slate-900 transition-colors">Privacy</a>
+          <a href="#faq" class="hover:text-slate-900 transition-colors">FAQ</a>
+        </nav>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="btn-sample-top"
+            type="button"
+            class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
+          >
+            Try Sample API Payload
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main id="app" class="max-w-[1360px] mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 flex-1">
+      
+      <!-- Initial Drop Zone & Hero -->
+      <section id="drop-view" class="max-w-2xl mx-auto text-center pt-2 sm:pt-6 pb-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-full mb-4">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 shrink-0"></i>
+          <span>100% Private · Large JSON files parsed locally in your browser</span>
+        </div>
+
+        <h1 class="text-3xl sm:text-5xl font-bold tracking-tight text-slate-900">
+          Nested JSON to Flat CSV Converter
+        </h1>
+
+        <p class="mt-3 text-base sm:text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
+          Unnest complex JSON objects, Stripe charges, Shopify orders, and webhook arrays into clean spreadsheets with dot-notated column headers.
+        </p>
+
+        <!-- Drop Box -->
+        <div
+          id="dropzone"
+          class="mt-8 border-2 border-dashed border-slate-300 hover:border-blue-600 bg-white rounded-2xl p-8 sm:p-12 shadow-xs transition-all duration-150 cursor-pointer group"
+        >
+          <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform duration-150">
+            <i data-lucide="file-json" class="w-7 h-7"></i>
+          </div>
+
+          <p class="text-lg font-semibold text-slate-900">
+            Drag and drop your JSON file here
+          </p>
+          <p class="mt-1 text-xs sm:text-sm text-slate-500">
+            Supports .json, .txt, or copied raw JSON arrays
+          </p>
+
+          <div class="mt-6">
+            <label
+              for="file-input"
+              class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <i data-lucide="folder-open" class="w-4 h-4"></i>
+              <span>Browse JSON file</span>
+              <input
+                id="file-input"
+                type="file"
+                accept=".json,.txt,application/json"
+                class="sr-only"
+              />
+            </label>
+          </div>
+
+          <div class="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
+            <span>Or press <kbd class="px-1.5 py-0.5 font-mono text-[11px] bg-slate-100 rounded border border-slate-200">Ctrl+V</kbd> to paste</span>
+            <span>·</span>
+            <button
+              id="btn-sample-drop"
+              type="button"
+              class="text-blue-600 font-medium hover:underline"
+            >
+              Load sample Stripe orders JSON
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workspace & Table Preview (Progressive Disclosure) -->
+      <section id="workspace-view" class="hidden transition-all duration-300">
+        <!-- Top Toolbar & Stats -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs mb-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-3">
+              <span id="label-filename" class="font-bold text-sm text-slate-900 truncate max-w-xs">data.json</span>
+              <span class="text-slate-300">·</span>
+              <span id="label-stats" class="text-xs font-mono text-slate-600">0 rows · 0 columns</span>
+              <span class="text-slate-300">·</span>
+              <!-- Search in table -->
+              <div class="relative w-48 sm:w-60">
+                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                <input
+                  id="search-input"
+                  type="search"
+                  placeholder="Filter rows..."
+                  class="w-full pl-8 pr-3 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                id="btn-toggle-columns"
+                type="button"
+                class="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Columns (<span id="visible-col-count">0</span>)
+              </button>
+              <button
+                id="btn-copy-csv"
+                type="button"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                <span id="copy-btn-text">Copy CSV</span>
+              </button>
+              <button
+                id="btn-download-csv"
+                type="button"
+                class="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-xs transition-colors"
+              >
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Download CSV</span>
+              </button>
+              <button
+                id="btn-open-another"
+                type="button"
+                class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Open another file"
+              >
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Column Visibility Drawer (Toggleable) -->
+          <div id="column-drawer" class="hidden mt-4 pt-4 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-700">Toggle Column Visibility</span>
+              <div class="flex items-center gap-2 text-[11px]">
+                <button id="btn-select-all-cols" type="button" class="text-blue-600 hover:underline">Select All</button>
+                <span>·</span>
+                <button id="btn-deselect-all-cols" type="button" class="text-slate-500 hover:underline">Deselect All</button>
+              </div>
+            </div>
+            <div id="column-pills-container" class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scroll p-1">
+              <!-- Dynamically populated column checkboxes -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Display Container -->
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+          <div class="overflow-x-auto max-h-[540px] custom-scroll">
+            <table class="w-full text-left text-xs">
+              <thead id="table-head" class="bg-slate-50 text-slate-700 font-semibold sticky top-0 border-b border-slate-200 shadow-2xs">
+                <!-- Dynamically populated headers -->
+              </thead>
+              <tbody id="table-body" class="divide-y divide-slate-100 font-mono">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sponsor Slot Container -->
+      <aside
+        id="sponsor-slot"
+        aria-label="Product Recommendation"
+        class="mt-12 max-w-3xl mx-auto bg-white border border-slate-200 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs"
+      >
+        <div class="flex items-center gap-3.5">
+          <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <i data-lucide="database" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
+              Data Pipeline &amp; ETL
+            </div>
+            <p class="text-xs sm:text-sm font-medium text-slate-800 mt-0.5">
+              Handling complex multi-table webhooks and database dumps?
+            </p>
+            <p class="text-xs text-slate-500">
+              Cleanly export API responses directly into Excel, Google Sheets, or business intelligence dashboards.
+            </p>
+          </div>
+        </div>
+        <a
+          href="#how-to-use"
+          class="px-3.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0 self-end sm:self-center"
+        >
+          Learn more
+        </a>
+      </aside>
+
+      <!-- How to Use Documentation -->
+      <article id="how-to-use" class="mt-16 pt-10 border-t border-slate-200 max-w-3xl mx-auto">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+          How to Flatten Nested JSON to CSV
+        </h2>
+        <p class="mt-2 text-sm text-slate-600 leading-relaxed">
+          Modern REST APIs and database webhooks return deeply nested JSON structures that ordinary spreadsheet software cannot open. Follow this pipeline:
+        </p>
+
+        <div class="mt-6 space-y-4">
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">1</div>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">Drop or Paste Any JSON Payload</h3>
+              <p class="text-xs text-slate-600 mt-0.5">
+                Drop your <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">.json</code> file or paste copied API responses from Postman, curl, Stripe, or Shopify.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">2</div>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">Automatic Tree Traversal</h3>
+              <p class="text-xs text-slate-600 mt-0.5">
+                The engine traverses nested object paths, creating dot-notated column names such as <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">billing.address.city</code> and matching values across every record.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">3</div>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">Filter Columns &amp; Export Clean CSV</h3>
+              <p class="text-xs text-slate-600 mt-0.5">
+                Toggle the <strong>Columns</strong> drawer to deselect unwanted IDs or metadata, search in real-time, and click <strong>Download CSV</strong> to save an RFC 4180 standard spreadsheet.
+              </p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Privacy Guarantee -->
+      <section id="privacy" class="mt-14 pt-10 border-t border-slate-200 max-w-3xl mx-auto">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+          Privacy &amp; Security Guarantee
+        </h2>
+        <div class="mt-4 p-4 rounded-xl bg-slate-100/70 border border-slate-200 text-xs text-slate-600 leading-relaxed">
+          Production database dumps, API credentials, customer billing addresses, and order histories must never be uploaded to cloud converters. GreenTools runs 100% locally in your browser memory. Zero tracking, zero telemetry, and zero network transmission.
+        </div>
+      </section>
+
+      <!-- FAQ Section -->
+      <section id="faq" class="mt-14 pt-10 border-t border-slate-200 max-w-3xl mx-auto">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 mb-6">
+          Frequently Asked Questions
+        </h2>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">What if my JSON has a top-level wrapper like {"data": [...]}?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              The converter automatically scans top-level keys for the primary array (e.g. <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">data</code>, <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">orders</code>, <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">items</code>) and unpacks the records seamlessly.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">Can this tool handle large 10MB+ JSON files?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Yes. Native JavaScript handles tens of thousands of objects in memory without the payload size limits or gateway timeouts imposed by server-based tools.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">Are cells containing commas or newlines properly escaped?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Yes. Output strictly adheres to RFC 4180 standards, quoting cells and doubling existing double-quotes so Excel and Google Sheets never misalign columns.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">Does this work completely offline?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Yes. Once loaded, all parsing algorithms execute locally on your device without an internet connection.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200/80 bg-white py-6 text-xs text-slate-500">
+      <div class="max-w-[1360px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p>GreenTools · 100% Client-Side JSON Flattener</p>
+        <div class="flex items-center gap-5">
+          <a href="#app" class="hover:text-slate-900 transition-colors">Back to top</a>
+          <a href="#how-to-use" class="hover:text-slate-900 transition-colors">How It Works</a>
+          <a href="#privacy" class="hover:text-slate-900 transition-colors">Privacy</a>
+          <a href="#faq" class="hover:text-slate-900 transition-colors">FAQ</a>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Client-Side Engine Script -->
+    <script>
+      (function () {
+        'use strict';
+
+        var SAMPLE_JSON = [
+          '[',
+          '  {',
+          '    "id": "ord_8921",',
+          '    "status": "paid",',
+          '    "customer": {',
+          '      "name": "Sarah Jenkins",',
+          '      "email": "sarah.j@example.com",',
+          '      "billing": {',
+          '        "city": "Austin",',
+          '        "state": "TX",',
+          '        "postal_code": "78701"',
+          '      }',
+          '    },',
+          '    "totals": {',
+          '      "subtotal": 149.00,',
+          '      "tax": 12.29,',
+          '      "shipping": 0.00',
+          '    },',
+          '    "tags": ["vip", "direct-checkout"]',
+          '  },',
+          '  {',
+          '    "id": "ord_8922",',
+          '    "status": "processing",',
+          '    "customer": {',
+          '      "name": "David Morales",',
+          '      "email": "david.m@example.com",',
+          '      "billing": {',
+          '        "city": "Seattle",',
+          '        "state": "WA",',
+          '        "postal_code": "98101"',
+          '      }',
+          '    },',
+          '    "totals": {',
+          '      "subtotal": 85.50,',
+          '      "tax": 8.64,',
+          '      "shipping": 5.00',
+          '    },',
+          '    "tags": ["first-order"]',
+          '  }',
+          ']'
+        ].join('\n');
+
+        var dropzone = document.getElementById('dropzone');
+        var fileInput = document.getElementById('file-input');
+        var dropView = document.getElementById('drop-view');
+        var workspaceView = document.getElementById('workspace-view');
+
+        var labelFilename = document.getElementById('label-filename');
+        var labelStats = document.getElementById('label-stats');
+        var searchInput = document.getElementById('search-input');
+        var visibleColCount = document.getElementById('visible-col-count');
+        var columnDrawer = document.getElementById('column-drawer');
+        var columnPillsContainer = document.getElementById('column-pills-container');
+        var tableHead = document.getElementById('table-head');
+        var tableBody = document.getElementById('table-body');
+
+        var btnToggleColumns = document.getElementById('btn-toggle-columns');
+        var btnSelectAllCols = document.getElementById('btn-select-all-cols');
+        var btnDeselectAllCols = document.getElementById('btn-deselect-all-cols');
+        var btnCopyCsv = document.getElementById('btn-copy-csv');
+        var copyBtnText = document.getElementById('copy-btn-text');
+        var btnDownloadCsv = document.getElementById('btn-download-csv');
+        var btnOpenAnother = document.getElementById('btn-open-another');
+        var btnSampleTop = document.getElementById('btn-sample-top');
+        var btnSampleDrop = document.getElementById('btn-sample-drop');
+
+        var appState = {
+          fileName: 'data.json',
+          allColumns: [], // array of header strings
+          visibleColumns: new Set(),
+          flattenedRows: [], // array of flat objects { [col]: string }
+          filterQuery: ''
+        };
+
+        // Recursive tree flattener
+        function flattenObject(obj, prefix, res) {
+          prefix = prefix || '';
+          res = res || {};
+
+          if (obj === null || obj === undefined) {
+            res[prefix] = '';
+            return res;
+          }
+
+          if (typeof obj !== 'object') {
+            res[prefix] = String(obj);
+            return res;
+          }
+
+          if (Array.isArray(obj)) {
+            // Check if array of primitives
+            var isPrimitiveArray = obj.every(function (item) {
+              return typeof item !== 'object' || item === null;
+            });
+
+            if (isPrimitiveArray) {
+              res[prefix] = obj.join('; ');
+            } else {
+              res[prefix] = JSON.stringify(obj);
+            }
+            return res;
+          }
+
+          for (var key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+              var newPrefix = prefix ? prefix + '.' + key : key;
+              flattenObject(obj[key], newPrefix, res);
+            }
+          }
+
+          return res;
+        }
+
+        function processJsonText(text) {
+          var parsed;
+          try {
+            parsed = JSON.parse(text);
+          } catch (err) {
+            alert('Invalid JSON syntax: ' + err.message);
+            return;
+          }
+
+          var records = [];
+          if (Array.isArray(parsed)) {
+            records = parsed;
+          } else if (typeof parsed === 'object' && parsed !== null) {
+            // Check for common array keys
+            var arrayKeys = ['data', 'items', 'orders', 'results', 'records', 'rows', 'customers', 'products'];
+            var foundArrayKey = null;
+            for (var i = 0; i < arrayKeys.length; i++) {
+              if (Array.isArray(parsed[arrayKeys[i]])) {
+                foundArrayKey = arrayKeys[i];
+                break;
+              }
+            }
+
+            if (foundArrayKey) {
+              records = parsed[foundArrayKey];
+            } else {
+              // Single object
+              records = [parsed];
+            }
+          }
+
+          var columnsSet = new Set();
+          var flatList = [];
+
+          for (var r = 0; r < records.length; r++) {
+            var flat = flattenObject(records[r]);
+            flatList.push(flat);
+            Object.keys(flat).forEach(function (k) {
+              columnsSet.add(k);
+            });
+          }
+
+          appState.allColumns = Array.from(columnsSet);
+          appState.visibleColumns = new Set(appState.allColumns);
+          appState.flattenedRows = flatList;
+
+          renderWorkspace();
+        }
+
+        function renderWorkspace() {
+          dropView.classList.add('hidden');
+          workspaceView.classList.remove('hidden');
+
+          labelFilename.textContent = appState.fileName;
+          labelStats.textContent = appState.flattenedRows.length + ' rows · ' + appState.allColumns.length + ' cols';
+          visibleColCount.textContent = appState.visibleColumns.size;
+
+          renderColumnDrawer();
+          renderTable();
+
+          if (window.lucide && window.lucide.createIcons) {
+            window.lucide.createIcons();
+          }
+        }
+
+        function renderColumnDrawer() {
+          columnPillsContainer.innerHTML = appState.allColumns.map(function (col) {
+            var isChecked = appState.visibleColumns.has(col);
+            return (
+              '<label class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer font-mono text-[11px] select-none">' +
+              '<input type="checkbox" class="col-toggle-box rounded text-blue-600 focus:ring-blue-500" data-col="' + escapeHtml(col) + '" ' + (isChecked ? 'checked' : '') + ' />' +
+              '<span>' + escapeHtml(col) + '</span>' +
+              '</label>'
+            );
+          }).join('');
+
+          var checkboxes = columnPillsContainer.querySelectorAll('.col-toggle-box');
+          checkboxes.forEach(function (box) {
+            box.addEventListener('change', function () {
+              var col = box.getAttribute('data-col');
+              if (box.checked) {
+                appState.visibleColumns.add(col);
+              } else {
+                appState.visibleColumns.delete(col);
+              }
+              visibleColCount.textContent = appState.visibleColumns.size;
+              renderTable();
+            });
+          });
+        }
+
+        function renderTable() {
+          var activeCols = appState.allColumns.filter(function (c) {
+            return appState.visibleColumns.has(c);
+          });
+
+          // Head
+          tableHead.innerHTML = '<tr><th class="px-3 py-2.5 text-[11px] font-mono text-slate-400 w-10 text-center">#</th>' +
+            activeCols.map(function (col) {
+              return '<th class="px-3 py-2.5 text-xs font-semibold text-slate-800 whitespace-nowrap">' + escapeHtml(col) + '</th>';
+            }).join('') + '</tr>';
+
+          // Filter rows
+          var query = appState.filterQuery.toLowerCase();
+          var filteredRows = appState.flattenedRows.filter(function (row) {
+            if (!query) return true;
+            return activeCols.some(function (c) {
+              return String(row[c] || '').toLowerCase().indexOf(query) !== -1;
+            });
+          });
+
+          // Body
+          if (filteredRows.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="' + (activeCols.length + 1) + '" class="p-8 text-center text-slate-400">No matching records found.</td></tr>';
+            return;
+          }
+
+          var maxRender = Math.min(filteredRows.length, 500); // virtual guard for massive datasets
+          var rowsHtml = [];
+
+          for (var i = 0; i < maxRender; i++) {
+            var row = filteredRows[i];
+            var tds = activeCols.map(function (c) {
+              var val = row[c] !== undefined ? row[c] : '';
+              return '<td class="px-3 py-2 text-slate-700 whitespace-nowrap max-w-xs truncate" title="' + escapeHtml(val) + '">' + escapeHtml(val) + '</td>';
+            });
+
+            rowsHtml.push(
+              '<tr class="hover:bg-slate-50 transition-colors">' +
+              '<td class="px-3 py-2 text-[11px] font-mono text-slate-400 text-center bg-slate-50/50">' + (i + 1) + '</td>' +
+              tds.join('') +
+              '</tr>'
+            );
+          }
+
+          tableBody.innerHTML = rowsHtml.join('');
+        }
+
+        function escapeHtml(str) {
+          if (!str) return '';
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        }
+
+        function exportCsvString() {
+          var activeCols = appState.allColumns.filter(function (c) {
+            return appState.visibleColumns.has(c);
+          });
+
+          function quoteCell(val) {
+            val = String(val === undefined || val === null ? '' : val);
+            if (val.indexOf('"') !== -1 || val.indexOf(',') !== -1 || val.indexOf('\n') !== -1 || val.indexOf('\r') !== -1) {
+              return '"' + val.replace(/"/g, '""') + '"';
+            }
+            return val;
+          }
+
+          var out = [];
+          out.push(activeCols.map(quoteCell).join(','));
+
+          appState.flattenedRows.forEach(function (row) {
+            var line = activeCols.map(function (c) {
+              return quoteCell(row[c]);
+            });
+            out.push(line.join(','));
+          });
+
+          return out.join('\r\n');
+        }
+
+        function handleFile(file) {
+          if (!file) return;
+          appState.fileName = file.name;
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            processJsonText(e.target.result);
+          };
+          reader.readAsText(file);
+        }
+
+        // Toggle Column Drawer
+        btnToggleColumns.addEventListener('click', function () {
+          columnDrawer.classList.toggle('hidden');
+        });
+
+        btnSelectAllCols.addEventListener('click', function () {
+          appState.visibleColumns = new Set(appState.allColumns);
+          renderColumnDrawer();
+          renderTable();
+        });
+
+        btnDeselectAllCols.addEventListener('click', function () {
+          appState.visibleColumns.clear();
+          renderColumnDrawer();
+          renderTable();
+        });
+
+        // Search Input
+        searchInput.addEventListener('input', function () {
+          appState.filterQuery = searchInput.value.trim();
+          renderTable();
+        });
+
+        // Copy CSV
+        btnCopyCsv.addEventListener('click', function () {
+          var csv = exportCsvString();
+          navigator.clipboard.writeText(csv).then(function () {
+            copyBtnText.textContent = 'Copied!';
+            setTimeout(function () {
+              copyBtnText.textContent = 'Copy CSV';
+            }, 2000);
+          });
+        });
+
+        // Download CSV
+        btnDownloadCsv.addEventListener('click', function () {
+          var csv = exportCsvString();
+          var outName = appState.fileName.replace(/\.[^/.]+$/, '') + '.csv';
+          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = outName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+
+        // Dropzone & File Input Events
+        fileInput.addEventListener('change', function (e) {
+          if (e.target.files && e.target.files[0]) {
+            handleFile(e.target.files[0]);
+          }
+        });
+
+        dropzone.addEventListener('dragover', function (e) {
+          e.preventDefault();
+          dropzone.classList.add('border-blue-600', 'bg-blue-50/20');
+        });
+
+        dropzone.addEventListener('dragleave', function (e) {
+          e.preventDefault();
+          dropzone.classList.remove('border-blue-600', 'bg-blue-50/20');
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+          e.preventDefault();
+          dropzone.classList.remove('border-blue-600', 'bg-blue-50/20');
+          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0]);
+          }
+        });
+
+        window.addEventListener('paste', function (e) {
+          var text = (e.clipboardData || window.clipboardData).getData('text');
+          if (text && (text.trim().startsWith('{') || text.trim().startsWith('['))) {
+            appState.fileName = 'pasted-payload.json';
+            processJsonText(text);
+          }
+        });
+
+        function loadSample() {
+          appState.fileName = 'sample-orders.json';
+          processJsonText(SAMPLE_JSON);
+        }
+
+        btnSampleTop.addEventListener('click', loadSample);
+        btnSampleDrop.addEventListener('click', function (e) {
+          e.stopPropagation();
+          loadSample();
+        });
+
+        btnOpenAnother.addEventListener('click', function () {
+          workspaceView.classList.add('hidden');
+          dropView.classList.remove('hidden');
+          fileInput.value = '';
+          searchInput.value = '';
+          appState.filterQuery = '';
+        });
+
+        // Initialize icons
+        if (window.lucide && window.lucide.createIcons) {
+          window.lucide.createIcons();
+        }
+      })();
+    </script>
+  </body>
+</html>
